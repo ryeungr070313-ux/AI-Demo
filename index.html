@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TraceSentinel live demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#083C35; --green2:#0F5247; --bg:#F2F4ED; --card:#FFFFFF; --ink:#10201D; --muted:#55625D;
+    --line:#D9DCD2; --red:#B3361B; --redbg:#FBEAE5; --amber:#8A5A00; --amberbg:#FDF3DC; --okbg:#E3F0EB;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "IBM Plex Sans",Segoe UI,Arial,sans-serif}
+  header{background:var(--green);color:#fff;padding:18px 28px;display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  header h1{font:700 26px/1.2 Sora,"IBM Plex Sans",Arial,sans-serif;margin:0}
+  header p{margin:0;color:#C9DAD4;font-size:15px}
+  main{max-width:1400px;margin:0 auto;padding:20px 28px 40px;display:grid;grid-template-columns:360px 1fr;gap:22px}
+  @media (max-width:980px){main{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+  h2{font:600 18px/1.3 Sora,"IBM Plex Sans",Arial,sans-serif;margin:0 0 12px}
+  label{display:block;font-size:14px;font-weight:600;margin:12px 0 4px}
+  select,input[type=text]{width:100%;font:inherit;padding:8px 10px;border:1px solid #BFC4B8;border-radius:8px;background:#fff;color:var(--ink)}
+  .row{display:flex;gap:8px;align-items:center}
+  .row input{flex:1}
+  button{font:600 15px "IBM Plex Sans",Arial,sans-serif;border-radius:8px;border:1px solid var(--green);background:#fff;color:var(--green);padding:8px 12px;cursor:pointer}
+  button:hover{background:var(--okbg)}
+  button.primary{background:var(--green);color:#fff;width:100%;padding:12px;font-size:17px;margin-top:16px}
+  button.primary:hover{background:var(--green2)}
+  button:disabled{opacity:.45;cursor:default}
+  .scen{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .scen button{font-size:14px;text-align:left;padding:8px 10px}
+  .check{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:14px}
+  .check input{margin-top:3px}
+  .seg{display:flex;border:1px solid var(--green);border-radius:8px;overflow:hidden;margin-top:6px}
+  .seg label{flex:1;margin:0;text-align:center;padding:8px 6px;cursor:pointer;font-weight:500;font-size:14px}
+  .seg input{display:none}
+  .seg input:checked+span{font-weight:700}
+  .seg label:has(input:checked){background:var(--green);color:#fff}
+  .hint{color:var(--muted);font-size:13px;margin:6px 0 0}
+  .right{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .certwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+  @media (max-width:1200px){.certwrap{grid-template-columns:1fr}}
+  canvas#cert{width:100%;height:auto;border-radius:8px;border:1px solid var(--line);display:block;background:#f8f7f0}
+  .verdict{border-radius:12px;padding:18px;background:#fff;border:1px solid var(--line);min-height:100%}
+  .verdict .score{font:700 44px/1 Sora,Arial,sans-serif;margin:6px 0}
+  .verdict.high{background:var(--redbg);border-color:#E7B4A6}
+  .verdict.high .score,.verdict.high .lvl{color:var(--red)}
+  .verdict.low{background:var(--okbg);border-color:#B9D6CC}
+  .verdict.low .score,.verdict.low .lvl{color:var(--green)}
+  .verdict.med{background:var(--amberbg);border-color:#EBD39B}
+  .verdict.med .score,.verdict.med .lvl{color:var(--amber)}
+  .lvl{font-weight:700;font-size:18px}
+  .verdict ul{padding-left:20px;margin:10px 0}
+  .verdict .btns{display:flex;gap:8px;margin-top:12px}
+  .verdict .btns button{flex:1}
+  .steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  @media (max-width:1200px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;opacity:.45;transition:opacity .3s}
+  .step.on{opacity:1}
+  .step h3{font:700 15px/1.2 Sora,Arial,sans-serif;margin:0 0 2px;letter-spacing:.02em}
+  .step .what{color:var(--muted);font-size:13px;margin:0 0 10px}
+  .chip{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;margin-bottom:8px}
+  .chip.ok{background:var(--okbg);color:var(--green)}
+  .chip.bad{background:var(--redbg);color:var(--red)}
+  .chip.skip{background:#ECEDE8;color:var(--muted)}
+  .kv{font-size:13.5px;width:100%;border-collapse:collapse}
+  .kv td{padding:3px 0;vertical-align:top;border-bottom:1px solid #EEF0EA}
+  .kv td:first-child{color:var(--muted);width:84px;padding-right:8px}
+  .mono{font-family:"IBM Plex Mono",Consolas,monospace;font-size:13px;word-break:break-all}
+  .bars div{display:grid;grid-template-columns:60px 1fr 40px;gap:6px;align-items:center;font-size:12.5px;margin:4px 0}
+  .bars .t{height:10px;background:#E6E8E1;border-radius:5px;overflow:hidden}
+  .bars .t i{display:block;height:100%;background:var(--green)}
+  .bars .flag .t i{background:var(--red)}
+  .bars .flag{color:var(--red);font-weight:600}
+  .small{font-size:13.5px;margin:6px 0}
+  .tables{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:1100px){.tables{grid-template-columns:1fr}}
+  table.list{width:100%;border-collapse:collapse;font-size:14px}
+  table.list th{text-align:left;font-weight:700;border-bottom:1px solid #C9CDC2;padding:6px 6px 6px 0}
+  table.list td{border-bottom:1px solid #EEF0EA;padding:6px 6px 6px 0}
+  tr.new td{background:#FFF6D6}
+  .foot{grid-column:1/-1;color:var(--muted);font-size:13px}
+  .pill{display:inline-block;background:var(--okbg);color:var(--green);border-radius:6px;padding:1px 6px;font-size:12px;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>TraceSentinel live demo</h1>
+  <p>Fictional certificates, real checks. Everything runs in this browser, so it also works offline.</p>
+</header>
+<main>
+  <section class="card" aria-label="Incoming part">
+    <h2>1. A part arrives</h2>
+    <div class="scen">
+      <button data-s="genuine">Genuine part</button>
+      <button data-s="reused">Reused certificate</button>
+      <button data-s="fake">Invented signatory</button>
+      <button data-s="edited">Edited after scanning</button>
+    </div>
+    <p class="hint">Pick a scenario, or type your own values below. Anything you change is checked live.</p>
+
+    <label for="company">Received by</label>
+    <select id="company"></select>
+
+    <label for="issuer">Issuer (engine maker)</label>
+    <select id="issuer"></select>
+
+    <label for="broker">Sold by broker</label>
+    <select id="broker"></select>
+
+    <label for="part">Part</label>
+    <select id="part"></select>
+
+    <label for="serial">Serial number</label>
+    <div class="row"><input type="text" id="serial" maxlength="10" autocomplete="off"><button id="newSerial" title="Make a new random serial">New</button></div>
+
+    <label for="signatory">Signed by</label>
+    <input type="text" id="signatory" maxlength="18" autocomplete="off">
+
+    <div class="check"><input type="checkbox" id="tamper"><label for="tamper" style="margin:0;font-weight:500">Someone edited the serial number on the scan before sending it</label></div>
+
+    <label>Check against</label>
+    <div class="seg">
+      <label><input type="radio" name="mode" value="single"><span>This company only</span></label>
+      <label><input type="radio" name="mode" value="network" checked><span>TraceSentinel network</span></label>
+    </div>
+
+    <button class="primary" id="run">Scan and check</button>
+  </section>
+
+  <section class="right">
+    <div class="certwrap">
+      <div class="card" style="padding:12px">
+        <canvas id="cert" width="760" height="400" aria-label="Scanned certificate"></canvas>
+      </div>
+      <div class="verdict" id="verdict">
+        <h2>Result</h2>
+        <p class="small">Press <b>Scan and check</b>. The certificate is drawn as a scanned image, then TraceSentinel reads it back from the pixels and checks it.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step" id="st-read"><h3>READ</h3><p class="what">OCR reads the fields from the image pixels</p><div class="body"></div></div>
+      <div class="step" id="st-inspect"><h3>INSPECT</h3><p class="what">Image check for signs of editing</p><div class="body"></div></div>
+      <div class="step" id="st-connect"><h3>CONNECT</h3><p class="what">Fingerprints compared across members</p><div class="body"></div></div>
+      <div class="step" id="st-explain"><h3>EXPLAIN</h3><p class="what">Risk score with reasons</p><div class="body"></div></div>
+    </div>
+
+    <div class="tables">
+      <div class="card">
+        <h2 id="ownTitle">Own records</h2>
+        <p class="hint" style="margin:-6px 0 10px">Private. Only this company sees the real serial numbers.</p>
+        <table class="list" id="own"></table>
+      </div>
+      <div class="card">
+        <h2>Shared network ledger</h2>
+        <p class="hint" style="margin:-6px 0 10px">What every member sees: scrambled fingerprints, never the serial itself.</p>
+        <table class="list" id="ledger"></table>
+      </div>
+    </div>
+    <p class="foot">Simplified for the browser: READ matches character shapes, INSPECT measures scanner noise, CONNECT uses SHA-256 fingerprints, and EXPLAIN uses written templates. The Colab version runs the full prototype, with Tesseract OCR and a classifier trained by federated learning. All companies, people and serial numbers are invented.</p>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ---------------- fictional world ---------------- */
+const COMPANIES = ["Airline A", "Repair Shop B", "Lessor C"];
+const ISSUERS = { "Meridian Engines": ["A. Tanaka", "R. Osei", "L. Moreau"], "Corvid Turbine": ["S. Nowak", "P. Duarte", "H. Lindqvist"] };
+const BROKERS = ["Northgate Aero", "Halden Parts", "Kestrel Supply", "Larkfield Aero"];
+const PARTS = ["HPT-SEAL", "LPT-DAMPER", "FUEL-NOZZLE", "BLEED-VALVE"];
+const NETWORK_KEY = "TS-NETWORK-KEY-2026";
+const SEED_RECORDS = [
+  ["Airline A","Meridian Engines","Northgate Aero","HPT-SEAL","K482913","A. Tanaka","2026-09-14"],
+  ["Airline A","Corvid Turbine","Halden Parts","FUEL-NOZZLE","T730155","S. Nowak","2026-09-29"],
+  ["Airline A","Meridian Engines","Kestrel Supply","BLEED-VALVE","M219044","L. Moreau","2026-10-08"],
+  ["Repair Shop B","Corvid Turbine","Northgate Aero","LPT-DAMPER","R558170","P. Duarte","2026-09-18"],
+  ["Repair Shop B","Meridian Engines","Halden Parts","HPT-SEAL","D904631","R. Osei","2026-10-03"],
+  ["Lessor C","Corvid Turbine","Kestrel Supply","BLEED-VALVE","W371826","H. Lindqvist","2026-09-22"],
+  ["Lessor C","Meridian Engines","Northgate Aero","FUEL-NOZZLE","F640297","A. Tanaka","2026-10-11"],
+];
+
+/* ---------------- SHA-256 (pure JS, works offline) ---------------- */
+function sha256(str){
+  const bytes = new TextEncoder().encode(str);
+  const K=[],H0=[]; let n=2,i=0;
+  const frac=x=>((x-Math.floor(x))*4294967296)|0;
+  while(i<64){let p=true;for(let d=2;d*d<=n;d++)if(n%d===0){p=false;break}
+    if(p){if(i<8)H0[i]=frac(Math.pow(n,1/2));K[i]=frac(Math.pow(n,1/3));i++}n++}
+  const l=bytes.length,total=((l+9+63)>>6)<<6,m=new Uint8Array(total);
+  m.set(bytes);m[l]=0x80;const dv=new DataView(m.buffer);
+  dv.setUint32(total-4,(l*8)>>>0);dv.setUint32(total-8,Math.floor(l*8/4294967296));
+  let H=H0.slice();const w=new Int32Array(64);
+  for(let o=0;o<total;o+=64){
+    for(let t=0;t<16;t++)w[t]=dv.getInt32(o+t*4);
+    for(let t=16;t<64;t++){const a=w[t-15],b=w[t-2];
+      const s0=(a>>>7|a<<25)^(a>>>18|a<<14)^(a>>>3),s1=(b>>>17|b<<15)^(b>>>19|b<<13)^(b>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)|0}
+    let [a,b,c,d,e,f,g,h]=H;
+    for(let t=0;t<64;t++){
+      const S1=(e>>>6|e<<26)^(e>>>11|e<<21)^(e>>>25|e<<7),ch=(e&f)^(~e&g),t1=(h+S1+ch+K[t]+w[t])|0;
+      const S0=(a>>>2|a<<30)^(a>>>13|a<<19)^(a>>>22|a<<10),mj=(a&b)^(a&c)^(b&c),t2=(S0+mj)|0;
+      h=g;g=f;f=e;e=(d+t1)|0;d=c;c=b;b=a;a=(t1+t2)|0}
+    H=[a,b,c,d,e,f,g,h].map((x,j)=>(H[j]+x)|0);
+  }
+  return H.map(x=>(x>>>0).toString(16).padStart(8,"0")).join("");
+}
+const norm = s => s.toUpperCase().replace(/[^A-Z0-9]/g,"");
+const fingerprint = serial => sha256(NETWORK_KEY+"|"+norm(serial));
+
+/* ---------------- state ---------------- */
+const state = { records: [], brokerAlerts: {}, last: null, nextId: 1 };
+function resetState(){
+  state.records = SEED_RECORDS.map(r=>({id:state.nextId++,company:r[0],issuer:r[1],broker:r[2],part:r[3],serial:r[4],signatory:r[5],date:r[6],fp:fingerprint(r[4]),fresh:false}));
+  BROKERS.forEach(b=>state.brokerAlerts[b]=0);
+}
+
+/* ---------------- seeded random ---------------- */
+let seed = 4048;
+const rnd = () => (seed = (seed*1664525+1013904223)>>>0) / 4294967296;
+const gauss = () => { let u=0,v=0; while(u===0)u=rnd(); v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+function randomSerial(){ const L="ABCDEFGHJKLMNPQRSTUVWXYZ"; return L[Math.floor(Math.random()*L.length)] + String(100000+Math.floor(Math.random()*900000)); }
+
+/* ---------------- drawing the scanned certificate ---------------- */
+const W=760,H=400,X0=30,ROW0=92,ROWH=56,PAPER=[248,247,240];
+const FIELDS=[["ISSUER","issuer"],["BROKER","broker"],["PART","part"],["SERIAL","serial"],["SIGNED","signatory"]];
+const MONO='20px "Courier New", Courier, "Liberation Mono", monospace';
+const canvas=document.getElementById("cert"), ctx=canvas.getContext("2d",{willReadFrequently:true});
+const hasFilter = "filter" in ctx;
+
+function drawCertificate(rec, tamper){
+  seed = (sha256(JSON.stringify(rec)).slice(0,8)|0) >>> 0 || 7;
+  ctx.filter="none";
+  ctx.fillStyle=`rgb(${PAPER})`;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="#2a2a2a";ctx.lineWidth=2;ctx.strokeRect(12,12,W-24,H-24);
+  ctx.fillStyle="#141414";ctx.textBaseline="top";
+  ctx.font='bold 20px "Courier New", Courier, monospace';
+  ctx.fillText("PART RELEASE RECORD - FICTIONAL SPECIMEN",X0,28);
+  ctx.font='12px Arial, sans-serif';ctx.fillStyle="#555";
+  ctx.fillText("Not a real airworthiness form. Classroom demonstration only.",X0,54);
+  if(hasFilter) ctx.filter="blur(0.5px)";
+  ctx.font=MONO;ctx.fillStyle="#191919";
+  FIELDS.forEach(([k,f],i)=>ctx.fillText(`${k}: ${rec[f]}`,X0,ROW0+i*ROWH));
+  ctx.filter="none";
+  // stamp
+  ctx.strokeStyle="rgba(8,60,53,.55)";ctx.lineWidth=3;ctx.beginPath();ctx.arc(640,300,46,0,7);ctx.stroke();
+  ctx.font='bold 13px Arial';ctx.fillStyle="rgba(8,60,53,.6)";ctx.textAlign="center";
+  ctx.fillText("RELEASED",640,286);ctx.fillText(rec.issuer.split(" ")[0].toUpperCase(),640,304);ctx.textAlign="left";
+  // scanner noise over the whole page
+  const img=ctx.getImageData(0,0,W,H),d=img.data;
+  for(let p=0;p<d.length;p+=4){const g=gauss()*5;d[p]+=g;d[p+1]+=g;d[p+2]+=g;}
+  ctx.putImageData(img,0,0);
+  if(tamper){ // a clean patch pasted over the serial line, as an image editor would
+    const y=ROW0+3*ROWH;
+    ctx.fillStyle=`rgb(${PAPER})`;ctx.fillRect(X0-2,y-4,420,32);
+    ctx.font=MONO;ctx.fillStyle="#191919";ctx.fillText(`SERIAL: ${rec.serial}`,X0,y);
+  }
+}
+
+/* ---------------- READ: OCR by matching character shapes ---------------- */
+const CHARSET="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.-: ";
+let PITCH=12, CELLW=14; const CELLH=28; const tplCache={};
+function grayAt(data,w,x,y){const p=(y*w+x)*4;return (data[p]+data[p+1]+data[p+2])/3;}
+function templatesFor(frac){
+  const key=frac.toFixed(2); if(tplCache[key]) return tplCache[key];
+  const c=document.createElement("canvas");c.width=CELLW+4;c.height=CELLH;const t=c.getContext("2d",{willReadFrequently:true});
+  const out=[];
+  for(const ch of CHARSET){
+    t.filter="none";t.fillStyle=`rgb(${PAPER})`;t.fillRect(0,0,c.width,c.height);
+    if(hasFilter)t.filter="blur(0.5px)";
+    t.font=MONO;t.textBaseline="top";t.fillStyle="#191919";t.fillText(ch,2+frac,2);
+    const dd=t.getImageData(0,0,c.width,c.height).data,arr=new Float32Array(CELLW*CELLH);
+    for(let y=0;y<CELLH;y++)for(let x=0;x<CELLW;x++)arr[y*CELLW+x]=grayAt(dd,c.width,x+1,y);
+    out.push([ch,arr]);
+  }
+  return tplCache[key]=out;
+}
+function ocrLine(data,y0){
+  let text="",blanks=0,scores=[];
+  for(let i=0;i<60;i++){
+    const xf=X0+i*PITCH,xi=Math.floor(xf),frac=xf-xi;
+    const cell=new Float32Array(CELLW*CELLH);let ink=0;
+    for(let y=0;y<CELLH;y++)for(let x=0;x<CELLW;x++){const v=grayAt(data,W,xi-1+x,y0-2+y);cell[y*CELLW+x]=v;if(v<140&&x>=3&&x<CELLW-3)ink++;}
+    if(ink<3){blanks++;if(blanks>=3)break;text+=" ";continue;}
+    blanks=0;let best=1e18,second=1e18,bc="?";
+    for(const [ch,tpl] of templatesFor(frac)){
+      let s=0;for(let k=0;k<tpl.length;k++){const e=cell[k]-tpl[k];s+=e*e;}
+      if(s<best){second=best;best=s;bc=ch;}else if(s<second)second=s;
+    }
+    text+=bc;if(bc!==" ")scores.push(1-best/Math.max(second,1));
+  }
+  return {text:text.replace(/\s+/g," ").trim(),conf:scores.length?scores.reduce((a,b)=>a+b)/scores.length:0};
+}
+function readCertificate(){
+  const data=ctx.getImageData(0,0,W,H).data,out={},confs=[];
+  FIELDS.forEach(([k,f],i)=>{
+    const r=ocrLine(data,ROW0+i*ROWH);confs.push(r.conf);
+    const m=r.text.match(/^[A-Z]+\s*:\s*(.*)$/);out[f]=m?m[1].trim():r.text;
+  });
+  out.conf=confs.reduce((a,b)=>a+b)/confs.length;
+  return out;
+}
+
+/* ---------------- INSPECT: scanner-noise consistency per field ---------------- */
+function inspect(){
+  const data=ctx.getImageData(0,0,W,H).data,levels=[];
+  for(let i=0;i<FIELDS.length;i++){
+    const y0=ROW0+i*ROWH-4;let s=0,n=0;
+    for(let y=y0;y<y0+32;y++)for(let x=X0;x<X0+400;x++){
+      const v=grayAt(data,W,x,y),l=grayAt(data,W,x-1,y),r=grayAt(data,W,x+1,y);
+      if(v>200&&l>200&&r>200){s+=Math.abs(v-(l+r)/2);n++;}
+    }
+    levels.push(n?s/n:0);
+  }
+  const sorted=[...levels].sort((a,b)=>a-b),median=sorted[2];
+  const flagged=levels.map(v=>v<0.5*median);
+  return {levels,median,flagged,edited:flagged.some(Boolean)};
+}
+
+/* ---------------- CONNECT + EXPLAIN ---------------- */
+function authorisedFor(issuer,name){ return (ISSUERS[issuer]||[]).some(a=>norm(a)===norm(name)); }
+function anyAuthorised(name){ return Object.values(ISSUERS).flat().some(a=>norm(a)===norm(name)); }
+
+function analyse(read,company,network,ins){
+  const fp=fingerprint(read.serial);
+  const pool=network?state.records:state.records.filter(r=>r.company===company);
+  const matches=pool.filter(r=>r.fp===fp);
+  const elsewhere=matches.filter(r=>r.company!==company), sameCo=matches.filter(r=>r.company===company);
+  const sigKnown=network?authorisedFor(read.issuer,read.signatory):null;
+  const brokerPrior=network?(state.brokerAlerts[read.broker]||0):0;
+  let score=0;const reasons=[];
+  if(ins.edited){score+=.55;reasons.push(`The ${FIELDS[ins.flagged.indexOf(true)][0].toLowerCase()} line has no scanner noise, so it was probably edited after the page was scanned.`);}
+  if(elsewhere.length){score+=.60;reasons.push(`This serial number was already certified to ${[...new Set(elsewhere.map(r=>r.company))].join(" and ")}. One certificate cannot cover two parts.`);}
+  else if(sameCo.length){score+=.60;reasons.push(`This serial number is already in ${company}'s own records.`);}
+  if(network&&!sigKnown){score+=.55;reasons.push(anyAuthorised(read.signatory)?`${read.signatory} signs for a different engine maker, not ${read.issuer}.`:`"${read.signatory}" is not on ${read.issuer}'s list of authorised signatories.`);}
+  if(network&&brokerPrior>=2){score+=.15;reasons.push(`${read.broker} has already triggered ${brokerPrior} alerts across the network.`);}
+  score=Math.min(score,1);
+  return {fp,matches,elsewhere,sameCo,sigKnown,brokerPrior,score,reasons};
+}
+
+/* ---------------- UI ---------------- */
+const $=id=>document.getElementById(id);
+function fill(sel,items){sel.innerHTML=items.map(v=>`<option>${v}</option>`).join("");}
+fill($("company"),COMPANIES);fill($("issuer"),Object.keys(ISSUERS));fill($("broker"),BROKERS);fill($("part"),PARTS);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function setForm(o){
+  for(const k of ["company","issuer","broker","part","serial","signatory"]) if(o[k]!==undefined) $(k).value=o[k];
+  $("tamper").checked=!!o.tamper;
+}
+const SCEN={
+  genuine:()=>({company:"Repair Shop B",issuer:"Meridian Engines",broker:"Northgate Aero",part:"HPT-SEAL",serial:randomSerial(),signatory:"A. Tanaka",tamper:false}),
+  reused:()=>{const src=state.records.find(r=>r.company==="Airline A");return {company:"Repair Shop B",issuer:src.issuer,broker:"Larkfield Aero",part:src.part,serial:src.serial,signatory:src.signatory,tamper:false};},
+  fake:()=>({company:"Lessor C",issuer:"Corvid Turbine",broker:"Larkfield Aero",part:"LPT-DAMPER",serial:randomSerial(),signatory:"J. Harlow",tamper:false}),
+  edited:()=>({company:"Airline A",issuer:"Corvid Turbine",broker:"Larkfield Aero",part:"BLEED-VALVE",serial:randomSerial(),signatory:"S. Nowak",tamper:true}),
+};
+document.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{setForm(SCEN[b.dataset.s]());clearSteps();});
+$("newSerial").onclick=()=>{$("serial").value=randomSerial();};
+$("company").onchange=renderTables;
+
+function clearSteps(){
+  ["read","inspect","connect","explain"].forEach(s=>{$("st-"+s).classList.remove("on");$("st-"+s).querySelector(".body").innerHTML="";});
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const chip=(cls,t)=>`<span class="chip ${cls}">${t}</span>`;
+
+async function run(){
+  const rec={company:$("company").value,issuer:$("issuer").value,broker:$("broker").value,part:$("part").value,
+             serial:$("serial").value.trim().toUpperCase(),signatory:$("signatory").value.trim()};
+  if(!rec.serial||!rec.signatory){$("verdict").className="verdict";$("verdict").innerHTML='<h2>Result</h2><p class="small">Fill in a serial number and a signatory first.</p>';return;}
+  const network=document.querySelector("input[name=mode]:checked").value==="network";
+  $("run").disabled=true;clearSteps();
+  $("verdict").className="verdict";$("verdict").innerHTML='<h2>Result</h2><p class="small">Scanning…</p>';
+  drawCertificate(rec,$("tamper").checked);
+  await wait(500);
+
+  const read=readCertificate();
+  $("st-read").classList.add("on");
+  $("st-read").querySelector(".body").innerHTML=chip("ok",`Read, ${Math.round(read.conf*100)}% confidence`)+
+    `<table class="kv">${FIELDS.map(([k,f])=>`<tr><td>${k[0]+k.slice(1).toLowerCase()}</td><td class="mono">${esc(read[f])}</td></tr>`).join("")}</table>`+
+    `<p class="small" style="color:var(--muted)">The next steps use what OCR read, not what you typed.</p>`;
+  await wait(650);
+
+  const ins=inspect();
+  const mx=Math.max(...ins.levels,1);
+  $("st-inspect").classList.add("on");
+  $("st-inspect").querySelector(".body").innerHTML=(ins.edited?chip("bad","Possible edit found"):chip("ok","No sign of editing"))+
+    `<div class="bars">${FIELDS.map(([k],i)=>`<div class="${ins.flagged[i]?"flag":""}"><span>${k[0]+k.slice(1).toLowerCase()}</span><span class="t"><i style="width:${Math.round(ins.levels[i]/mx*100)}%"></i></span><span>${ins.levels[i].toFixed(1)}</span></div>`).join("")}</div>`+
+    `<p class="small" style="color:var(--muted)">Scanner noise level on each line. A pasted-in edit is too clean.</p>`;
+  await wait(650);
+
+  const a=analyse(read,rec.company,network,ins);
+  $("st-connect").classList.add("on");
+  let cHtml="";
+  if(a.elsewhere.length) cHtml+=chip("bad","Seen at another company");
+  else if(a.sameCo.length) cHtml+=chip("bad","Already in own records");
+  else cHtml+=chip("ok","Serial not seen before");
+  cHtml+=`<table class="kv"><tr><td>Fingerprint</td><td class="mono">${a.fp.slice(0,16)}…</td></tr>`+
+    `<tr><td>Matches</td><td>${a.matches.length?a.matches.map(m=>`${esc(m.company)} (${m.date})`).join("<br>"):"None"}</td></tr>`+
+    `<tr><td>Signatory</td><td>${network?(a.sigKnown?`On ${esc(read.issuer)}'s list`:`<b style="color:var(--red)">Not on ${esc(read.issuer)}'s list</b>`):"Not available alone"}</td></tr>`+
+    `<tr><td>Broker</td><td>${network?`${a.brokerPrior} earlier alert${a.brokerPrior===1?"":"s"}`:"Not available alone"}</td></tr></table>`;
+  if(!network) cHtml=chip("skip","One company only")+cHtml.replace(/^<span[^>]*>[^<]*<\/span>/,"")+`<p class="small" style="color:var(--muted)">Alone, ${esc(rec.company)} can only check its own records.</p>`;
+  $("st-connect").querySelector(".body").innerHTML=cHtml;
+  await wait(650);
+
+  const lvl=a.score>=.5?["high","HIGH risk","Quarantine the part and contact the issuer."]:a.score>0?["med","MEDIUM risk","Ask the issuer to confirm before use."]:["low","LOW risk","Accept, with the normal checks."];
+  $("st-explain").classList.add("on");
+  $("st-explain").querySelector(".body").innerHTML=chip(a.score>=.5?"bad":"ok",`Score ${a.score.toFixed(2)}`)+
+    `<p class="small">Each warning adds to the score: edit found +0.55, serial reused +0.60, unknown signatory +0.55, broker history +0.15 (maximum 1.00). 0.50 or more is high risk.</p>`;
+  if(network&&a.score>=.5) state.brokerAlerts[read.broker]=(state.brokerAlerts[read.broker]||0)+1;
+  state.last={rec,read,a};
+
+  const v=$("verdict");v.className="verdict "+lvl[0];
+  v.innerHTML=`<h2>Result</h2><div class="lvl">${lvl[1]}</div><div class="score">${a.score.toFixed(2)}</div>`+
+    (a.reasons.length?`<ul>${a.reasons.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>`:`<p class="small">No warning signs found${network?" across the network":" in this company's own records"}.</p>`)+
+    `<p class="small"><b>Suggested:</b> ${lvl[2]}</p><p class="small" style="color:var(--muted)">An inspector makes the final decision.</p>`+
+    `<div class="btns"><button id="accept">Accept part</button><button id="quarantine">Quarantine</button></div>`;
+  $("accept").onclick=()=>{state.records.push({id:state.nextId++,company:rec.company,issuer:read.issuer,broker:read.broker,part:read.part,serial:read.serial,signatory:read.signatory,date:"2026-11-10",fp:a.fp,fresh:true});
+    v.querySelector(".btns").innerHTML=`<span class="pill">Accepted. Its fingerprint is now on the network.</span>`;renderTables();};
+  $("quarantine").onclick=()=>{v.querySelector(".btns").innerHTML=`<span class="pill" style="background:var(--redbg);color:var(--red)">Part quarantined. Nothing added to the network.</span>`;};
+  $("run").disabled=false;renderTables();
+}
+$("run").onclick=run;
+
+function renderTables(){
+  const co=$("company").value;
+  $("ownTitle").textContent=`${co}'s own records`;
+  const own=state.records.filter(r=>r.company===co);
+  $("own").innerHTML=`<tr><th>Received</th><th>Part</th><th>Serial</th><th>Signed by</th></tr>`+
+    own.map(r=>`<tr class="${r.fresh?"new":""}"><td>${r.date}</td><td>${esc(r.part)}</td><td class="mono">${esc(r.serial)}</td><td>${esc(r.signatory)}</td></tr>`).join("");
+  $("ledger").innerHTML=`<tr><th>Member</th><th>Serial fingerprint</th><th>Received</th></tr>`+
+    state.records.slice().reverse().map(r=>`<tr class="${r.fresh?"new":""}"><td>${esc(r.company)}</td><td class="mono">${r.fp.slice(0,16)}…</td><td>${r.date}</td></tr>`).join("");
+}
+
+/* ---------------- start ---------------- */
+async function start(){
+  try{ if(document.fonts) await document.fonts.load(MONO); }catch(e){}
+  ctx.font=MONO; PITCH=ctx.measureText("M").width; CELLW=Math.ceil(PITCH)+2;
+  resetState();setForm(SCEN.genuine());renderTables();
+  drawCertificate({company:"",issuer:"Meridian Engines",broker:"-",part:"-",serial:"-",signatory:"-"},false);
+}
+start();
+window.__ts = {state, sha256, run, setForm, SCEN};
+</script>
+</body>
+</html>
